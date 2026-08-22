@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Story Video Creator</title>
+    <!-- Librería para corregir duración de WebM -->
+    <script src="https://cdn.jsdelivr.net/npm/webm-duration-fix@1.0.5/index.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --panel: #1a1a1a;
+            --panel2: #242424;
+            --border: #333;
+            --text: #e0e0e0;
+            --text-dim: #999;
+            --accent: #ff4500;
+            --accent2: #4caf50;
+            --accent3: #2196f3;
+            --danger: #f44336;
+            --radius: 10px;
+            --radius-sm: 6px;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+        header {
+            background: var(--panel);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        header h1 {
+            font-size: 1.3em;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        header h1 span {
+            color: var(--text);
+            font-weight: 400;
+            font-size: 0.7em;
+        }
+        .header-status {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-left: auto;
+            font-size: 0.8em;
+            color: var(--text-dim);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .status-dot.green { background: var(--accent2); }
+        .status-dot.red { background: var(--danger); }
+        .status-dot.yellow { background: #ff9800; }
+        .main-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            gap: 0;
+            flex-wrap: wrap;
+        }
+        .preview-panel {
+            flex: 1;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            background: #0a0a0a;
+            gap: 8px;
+            min-height: 400px;
+        }
+        .preview-panel canvas {
+            border-radius: var(--radius);
+            border: 2px solid var(--border);
+            max-width: 95%;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            background: #111;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+        }
+        .preview-info {
+            font-size: 0.8em;
+            color: var(--text-dim);
+            text-align: center;
+            line-height: 1.5;
+        }
+        .preview-info strong { color: var(--text); }
+        .controls-panel {
+            width: 420px;
+            min-width: 320px;
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+        }
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            background: var(--panel2);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 10px 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.75em;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+            text-align: center;
+        }
+        .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(255,69,0,0.08);
+        }
+        .tab-content {
+            display: none;
+            padding: 18px;
+            flex: 1;
+        }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 0.8em;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.9em;
+            transition: border 0.2s;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group input[type="file"] {
+            padding: 8px;
+            font-size: 0.8em;
+            background: var(--panel2);
+            cursor: pointer;
+        }
+        .form-group input[type="file"]::file-selector-button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+            font-size: 0.85em;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-family: inherit;
+            letter-spacing: 0.2px;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #e03e00; }
+        .btn-secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #2e2e2e; }
+        .btn-green { background: var(--accent2); color: #fff; }
+        .btn-green:hover { background: #3d8b40; }
+        .btn-blue { background: var(--accent3); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 0.75em; }
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: var(--panel2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: var(--danger);
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        .recording-indicator.active { display: flex; }
+        .recording-indicator .pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--danger);
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.5); }
+        }
+        .ollama-status { display: flex; align-items: center; gap: 6px; font-size: 0.8em; color: var(--text-dim); margin-top: 5px; }
+        .voice-list { max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel2); }
+        .voice-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85em;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+        .voice-option:last-child { border-bottom: none; }
+        .voice-option:hover { background: rgba(255,255,255,0.05); }
+        .voice-option.active { background: rgba(255,69,0,0.15); color: var(--accent); }
+        .voice-option .voice-name { flex: 1; }
+        .voice-option .voice-lang { font-size: 0.75em; color: var(--text-dim); }
+        .mini-preview {
+            position: relative;
+            width: 100%;
+            max-width: 200px;
+            margin: 0 auto;
+        }
+        .mini-preview img {
+            width: 100%;
+            border-radius: 50%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border: 2px solid var(--border);
+        }
+        .hidden { display: none !important; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+        .checkbox-group label {
+            font-size: 0.85em;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 400;
+            color: var(--text);
+            margin: 0;
+        }
+        .slider-group { display: flex; gap: 12px; align-items: center; }
+        .slider-group input[type="range"] { flex: 1; }
+        .slider-group .slider-value { min-width: 50px; text-align: center; font-weight: 600; color: var(--accent); }
+        @media (max-width: 900px) {
+            .main-layout { flex-direction: column; }
+            .controls-panel { width: 100%; max-height: none; border-left: none; border-top: 1px solid var(--border); }
+            .preview-panel { min-height: 300px; padding: 10px; }
+            .preview-panel canvas { max-height: 50vh; }
+            .tabs { position: static; }
+        }
+        .youtube-section {
+            background: rgba(255,0,0,0.08);
+            border: 1px solid rgba(255,0,0,0.3);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .youtube-section h4 { color: #ff6b6b; font-size: 0.9em; margin-bottom: 8px; }
+        .duration-display {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: var(--accent2);
+            text-align: center;
+            padding: 10px;
+            background: var(--panel2);
+            border-radius: var(--radius-sm);
+        }
+        .duration-display small { font-weight: 400; font-size: 0.6em; color: var(--text-dim); }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.85em;
+            z-index: 1000;
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .toast.success { background: var(--accent2); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--accent3); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .word-count-display { font-size: 0.75em; color: var(--text-dim); margin-top: 4px; }
+        .size-input-group { display: flex; gap: 10px; align-items: center; }
+        .size-input-group input { flex: 1; min-width: 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📖 Reddit<span>Story Video Creator</span></h1>
+        <div class="header-status">
+            <span><span class="status-dot yellow" id="ollamaDot"></span>Ollama: <span id="ollamaStatusText">No conectado</span></span>
+            <span><span class="status-dot yellow" id="ytDot"></span>YouTube: <span id="ytStatusText">No conectado</span></span>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- Preview Panel -->
+        <div class="preview-panel" id="previewPanel">
+            <canvas id="mainCanvas" width="540" height="960"></canvas>
+            <div class="preview-info">
+                <strong>Previsualización</strong> · 1080×1920 (escalado a 540×960)<br>
+                <span id="durationLabel">Duración estimada: <strong>0.0s</strong></span>
+            </div>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="controls-panel">
+            <div class="tabs" id="tabsContainer">
+                <button class="tab-btn active" data-tab="tab-video">🎬 Video</button>
+                <button class="tab-btn" data-tab="tab-reddit">📝 Reddit Card</button>
+                <button class="tab-btn" data-tab="tab-audio">🔊 Audio</button>
+                <button class="tab-btn" data-tab="tab-ai">🤖 IA</button>
+                <button class="tab-btn" data-tab="tab-ai-response">📄 Respuesta IA</button>
+                <button class="tab-btn" data-tab="tab-export">📤 Exportar</button>
+            </div>
+
+            <!-- TAB: VIDEO -->
+            <div class="tab-content active" id="tab-video">
+                <div class="form-group">
+                    <label>Video de fondo (bucle)</label>
+                    <input type="file" id="bgVideoInput" accept="video/*">
+                    <div style="margin-top:6px;font-size:0.75em;color:var(--text-dim)">Se reproducirá en bucle durante todo el video.</div>
+                </div>
+                <div class="form-group">
+                    <label>Nivel de oscurecimiento del fondo</label>
+                    <input type="range" id="darkOverlay" min="0" max="0.7" step="0.05" value="0.35">
+                    <div style="font-size:0.75em;color:var(--text-dim)">Valor: <span id="darkOverlayVal">0.35</span></div>
+                </div>
+
+                <!-- Control de tamaño y escala -->
+                <div class="form-group">
+                    <label>📐 Tamaño de la tarjeta (px)</label>
+                    <div class="size-input-group">
+                        <div style="flex:1;">
+                            <label style="font-size:0.7em;">Ancho</label>
+                            <input type="number" id="cardWidthPx" min="200" max="1000" step="10" value="842">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:0.7em;">Alto</label>
+                            <input type="number" id="cardHeightPx" min="150" max="1200" step="10" value="350">
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <label style="font-size:0.75em;">🔍 Escala global de la tarjeta</label>
+                        <input type="range" id="cardScale" min="0.5" max="2.0" step="0.05" value="1.0">
+                        <div style="font-size:0.75em;color:var(--text-dim)">Escala: <span id="cardScaleVal">1.0x</span></div>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <label style="font-size:0.75em;">Ajuste rápido de ancho (%)</label>
+                        <input type="range" id="cardWidthPct" min="40" max="95" step="1" value="78">
+                        <div style="font-size:0.75em;color:var(--text-dim)">Ancho: <span id="cardWidthPctVal">78%</span></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Posición vertical de la tarjeta (% desde arriba)</label>
+                    <input type="range" id="cardYPos" min="10" max="80" step="1" value="50">
+                    <div style="font-size:0.75em;color:var(--text-dim)">Posición: <span id="cardYPosVal">50%</span></div>
+                </div>
+
+                <!-- Espaciados -->
+                <div class="form-group">
+                    <label>📏 Espaciado interior</label>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:120px;">
+                            <label style="font-size:0.7em;">Padding superior</label>
+                            <input type="number" id="cardTopPadding" min="5" max="80" step="1" value="20">
+                        </div>
+                        <div style="flex:1;min-width:120px;">
+                            <label style="font-size:0.7em;">Espacio título-subreddit</label>
+                            <input type="number" id="cardTitleGap" min="5" max="80" step="1" value="30">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btnRemoveBgVideo">✖ Quitar video de fondo</button>
+            </div>
+
+            <!-- TAB: REDDIT CARD -->
+            <div class="tab-content" id="tab-reddit">
+                <div class="form-group">
+                    <label>Subreddit (sin "r/")</label>
+                    <input type="text" id="cardSubreddit" value="HistoriasDeReddit" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label>Título de la historia (largo)</label>
+                    <textarea id="cardTitle" rows="3" maxlength="500">Mi vecino descubrió que su esposa escondía un secreto increíble en el ático</textarea>
+                    <div style="font-size:0.7em;color:var(--text-dim)" id="titleCharCount">0 caracteres</div>
+                </div>
+                <div class="form-group">
+                    <label>Nombre de usuario</label>
+                    <input type="text" id="cardUsername" value="usuario_misterioso" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label>Foto de perfil</label>
+                    <input type="file" id="cardAvatarInput" accept="image/*">
+                    <div class="mini-preview" style="margin-top:8px;">
+                        <img id="avatarPreview" src="" alt="Avatar" style="display:none;">
+                    </div>
+                </div>
+                <div class="form-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:80px;">
+                        <label>👍 Likes</label>
+                        <input type="text" id="cardLikes" value="12.5k">
+                    </div>
+                    <div style="flex:1;min-width:80px;">
+                        <label>💬 Comentarios</label>
+                        <input type="text" id="cardComments" value="842">
+                    </div>
+                    <div style="flex:1;min-width:80px;">
+                        <label>🔗 Compartir</label>
+                        <input type="text" id="cardShares" value="356">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Premios / insignias (separados por comas)</label>
+                    <input type="text" id="cardAwards" value="🏆,🥇,💎" placeholder="Ej: 🏆,🥇">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="cardShowAwards" checked>
+                    <label for="cardShowAwards">Mostrar premios</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="cardShowVoteArrows" checked>
+                    <label for="cardShowVoteArrows">Mostrar flechas de votos</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="cardDarkMode" checked>
+                    <label for="cardDarkMode">Modo oscuro de tarjeta</label>
+                </div>
+                <div class="form-group">
+                    <label>Color de acento de la tarjeta</label>
+                    <input type="color" id="cardAccentColor" value="#ff4500" style="height:36px;padding:2px;cursor:pointer;">
+                </div>
+                <div class="form-group">
+                    <label>📏 Tamaño de fuente del título</label>
+                    <input type="range" id="titleFontSize" min="20" max="48" step="1" value="32">
+                    <div style="font-size:0.75em;color:var(--text-dim)">Tamaño: <span id="titleFontSizeVal">32px</span></div>
+                </div>
+            </div>
+
+            <!-- TAB: AUDIO -->
+            <div class="tab-content" id="tab-audio">
+                <div class="form-group">
+                    <label>Historia completa (solo audio, no visible en video)</label>
+                    <textarea id="storyText" rows="8" placeholder="Escribe aquí la historia completa que será narrada por la voz...">Mi vecino siempre fue un hombre misterioso. Un día, mientras regaba las plantas, noté que entraba al ático con una linterna a las 3 de la mañana. Decidí investigar y lo que encontré cambió mi vida para siempre. Resulta que su esposa, a quien todos creían muerta, vivía en el ático desde hacía 20 años. La historia detrás de esto es aún más increíble de lo que imaginas.</textarea>
+                    <div class="word-count-display">Palabras: <span id="storyWordCount">0</span></div>
+                </div>
+                <hr class="divider">
+                <div class="form-group">
+                    <label>Motor de voz</label>
+                    <select id="ttsEngine">
+                        <option value="speechSynthesis">🗣️ SpeechSynthesis (gratis, navegador)</option>
+                        <option value="audioFile">📁 Subir archivo de audio</option>
+                        <option value="openai">🤖 OpenAI TTS (requiere API key)</option>
+                    </select>
+                </div>
+                <div id="ttsSpeechSynthesisSection">
+                    <div class="form-group">
+                        <label>Selecciona una voz</label>
+                        <div class="voice-list" id="voiceList">
+                            <div style="padding:10px;font-size:0.8em;color:var(--text-dim);">Cargando voces...</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Velocidad de habla</label>
+                        <input type="range" id="ttsRate" min="0.5" max="2" step="0.05" value="1">
+                        <div style="font-size:0.75em;color:var(--text-dim)">Velocidad: <span id="ttsRateVal">1.0x</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tono</label>
+                        <input type="range" id="ttsPitch" min="0.5" max="2" step="0.05" value="1">
+                        <div style="font-size:0.75em;color:var(--text-dim)">Tono: <span id="ttsPitchVal">1.0</span></div>
+                    </div>
+                    <div style="background:#2a2a2a;border-radius:6px;padding:10px;margin-top:10px;font-size:0.75em;color:var(--text-dim);">
+                        ⚠️ Para grabar audio con SpeechSynthesis, debes seleccionar "Compartir audio del sistema" en la ventana emergente al iniciar la grabación.
+                    </div>
+                </div>
+                <div id="ttsAudioFileSection" class="hidden">
+                    <div class="form-group">
+                        <label>Subir archivo de audio (MP3, WAV, etc.)</label>
+                        <input type="file" id="audioFileInput" accept="audio/*">
+                        <div style="font-size:0.75em;color:var(--text-dim);margin-top:4px;">El audio se reproducirá durante la grabación.</div>
+                    </div>
+                </div>
+                <div id="ttsOpenAISection" class="hidden">
+                    <div class="form-group">
+                        <label>API Key de OpenAI</label>
+                        <input type="password" id="openaiApiKey" placeholder="sk-...">
+                    </div>
+                    <div class="form-group">
+                        <label>Modelo de voz</label>
+                        <select id="openaiVoice">
+                            <option value="alloy">Alloy (neutral)</option>
+                            <option value="echo">Echo (masculino profundo)</option>
+                            <option value="fable">Fable (narrador)</option>
+                            <option value="onyx">Onyx (masculino serio)</option>
+                            <option value="nova">Nova (femenino suave)</option>
+                            <option value="shimmer">Shimmer (femenino cálido)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Modelo TTS</label>
+                        <select id="openaiTtsModel">
+                            <option value="tts-1">tts-1 (rápido)</option>
+                            <option value="tts-1-hd">tts-1-hd (alta calidad)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" id="btnGenerateOpenAIAudio">🎵 Generar audio con OpenAI</button>
+                    <div id="openaiAudioStatus" style="font-size:0.75em;margin-top:6px;color:var(--text-dim);"></div>
+                    <audio id="openaiAudioPlayer" controls style="width:100%;margin-top:8px;display:none;"></audio>
+                </div>
+                <hr class="divider">
+                <div class="form-group">
+                    <label>Prueba de voz</label>
+                    <button class="btn btn-secondary btn-sm" id="btnTestVoice">🔊 Probar voz (5 segundos)</button>
+                </div>
+            </div>
+
+            <!-- TAB: AI -->
+            <div class="tab-content" id="tab-ai">
+                <div class="form-group">
+                    <label>Conexión con Ollama</label>
+                    <div class="ollama-status" id="ollamaStatus">
+                        <span class="status-dot yellow"></span>
+                        <span>Comprobando conexión...</span>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary btn-sm" id="btnRefreshOllama">🔄 Refrescar</button>
+                        <button class="btn btn-secondary btn-sm" id="btnFetchModels">📋 Listar modelos</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Modelo de Ollama</label>
+                    <select id="ollamaModelSelect">
+                        <option value="">— Sin modelos disponibles —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Número de palabras para la historia</label>
+                    <input type="number" id="aiWordCount" value="150" min="50" max="1000" step="10">
+                </div>
+                <div class="form-group">
+                    <label>Instrucciones adicionales para la IA (opcional)</label>
+                    <textarea id="aiCustomInstructions" rows="3" placeholder="Ej: Escribe una historia de terror con giro final inesperado..."></textarea>
+                </div>
+                <button class="btn btn-primary" id="btnGenerateAI">🤖 Generar historia con IA</button>
+                <div id="aiProgress" class="hidden" style="margin-top:10px;">
+                    <div class="progress-bar-container"><div class="progress-bar" id="aiProgressBar"></div></div>
+                    <div style="font-size:0.8em;color:var(--text-dim)" id="aiProgressText">Generando...</div>
+                </div>
+                <div id="aiError" class="hidden" style="margin-top:10px;color:var(--danger);font-size:0.8em;"></div>
+            </div>
+
+            <!-- TAB: AI RESPONSE -->
+            <div class="tab-content" id="tab-ai-response">
+                <div class="form-group">
+                    <label>Historia generada por IA (editable)</label>
+                    <textarea id="aiStoryText" rows="10" placeholder="La historia generada aparecerá aquí. Puedes editarla antes de usarla."></textarea>
+                    <div class="word-count-display">Palabras: <span id="aiStoryWordCount">0</span></div>
+                </div>
+                <div class="form-group">
+                    <label>Título generado (editable)</label>
+                    <input type="text" id="aiTitleText" placeholder="Título para la tarjeta de Reddit">
+                </div>
+                <div class="form-group">
+                    <label>Subreddit generado (editable)</label>
+                    <input type="text" id="aiSubredditText" placeholder="Nombre del subreddit (sin r/)">
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-green" id="btnApplyAI">✅ Aplicar a la app</button>
+                    <button class="btn btn-secondary" id="btnClearAI">🗑️ Limpiar</button>
+                </div>
+            </div>
+
+            <!-- TAB: EXPORT -->
+            <div class="tab-content" id="tab-export">
+                <div class="form-group">
+                    <label>Duración del video</label>
+                    <div class="duration-display" id="durationDisplay">— <small>calculando...</small></div>
+                </div>
+                <div class="form-group">
+                    <label>Formato de exportación</label>
+                    <select id="exportFormat">
+                        <option value="webm">WebM (recomendado)</option>
+                        <option value="mp4">MP4 (si el navegador lo soporta)</option>
+                    </select>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="btnStartRecording">🎬 Grabar video</button>
+                    <button class="btn btn-danger hidden" id="btnStopRecording">⏹️ Detener</button>
+                </div>
+                <div class="recording-indicator" id="recordingIndicator">
+                    <div class="pulse"></div>
+                    <span id="recordingTime">Grabando... 0s</span>
+                </div>
+                <hr class="divider">
+                <div class="youtube-section">
+                    <h4>📺 Subir a YouTube</h4>
+                    <div class="form-group">
+                        <label>Google API Client ID</label>
+                        <input type="text" id="googleClientId" placeholder="Tu Client ID de Google Cloud">
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-blue btn-sm" id="btnConnectYouTube">🔗 Conectar YouTube</button>
+                        <button class="btn btn-danger btn-sm" id="btnUploadYouTube" disabled>📤 Subir video</button>
+                    </div>
+                    <div id="ytUploadStatus" style="font-size:0.8em;margin-top:8px;color:var(--text-dim);"></div>
+                    <div class="form-group" style="margin-top:10px;">
+                        <label>Título para YouTube</label>
+                        <input type="text" id="ytTitle" value="">
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción para YouTube</label>
+                        <textarea id="ytDescription" rows="3">Historia de Reddit #shorts #reddit #historias</textarea>
+                    </div>
+                </div>
+                <hr class="divider">
+                <div class="form-group">
+                    <label>💾 Plantillas y ajustes</label>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary btn-sm" id="btnExportSettings">📤 Exportar ajustes</button>
+                        <button class="btn btn-secondary btn-sm" id="btnImportSettings">📥 Importar ajustes</button>
+                        <input type="file" id="importSettingsFile" accept=".json" class="hidden">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <video id="bgVideoElement" style="display:none;" loop muted playsinline></video>
+    <audio id="hiddenAudioElement" style="display:none;"></audio>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const state = {
+                bgVideoFile: null,
+                bgVideoURL: null,
+                darkOverlay: 0.35,
+                cardWidthPx: 842,
+                cardHeightPx: 350,
+                cardScale: 1.0,
+                cardBaseWidth: 842,
+                cardBaseHeight: 350,
+                cardWidthPct: 78,
+                cardYPos: 50,
+                cardTopPadding: 20,
+                cardTitleGap: 30,
+                subreddit: 'HistoriasDeReddit',
+                title: 'Mi vecino descubrió que su esposa escondía un secreto increíble en el ático',
+                username: 'usuario_misterioso',
+                avatarFile: null,
+                avatarURL: null,
+                likes: '12.5k',
+                comments: '842',
+                shares: '356',
+                awards: '🏆,🥇,💎',
+                showAwards: true,
+                showVoteArrows: true,
+                cardDarkMode: true,
+                cardAccentColor: '#ff4500',
+                titleFontSize: 32,
+                storyText: 'Mi vecino siempre fue un hombre misterioso. Un día, mientras regaba las plantas, noté que entraba al ático con una linterna a las 3 de la mañana. Decidí investigar y lo que encontré cambió mi vida para siempre. Resulta que su esposa, a quien todos creían muerta, vivía en el ático desde hacía 20 años. La historia detrás de esto es aún más increíble de lo que imaginas.',
+                ttsEngine: 'speechSynthesis',
+                selectedVoiceURI: null,
+                ttsRate: 1.0,
+                ttsPitch: 1.0,
+                audioFile: null,
+                audioFileURL: null,
+                openaiApiKey: '',
+                openaiVoice: 'alloy',
+                openaiTtsModel: 'tts-1',
+                openaiAudioURL: null,
+                ollamaBase: 'http://localhost:11434',
+                ollamaModels: [],
+                selectedOllamaModel: '',
+                aiWordCount: 150,
+                aiCustomInstructions: '',
+                aiStory: '',
+                aiTitle: '',
+                aiSubreddit: '',
+                googleClientId: '',
+                ytToken: null,
+                isRecording: false,
+                mediaRecorder: null,
+                recordingChunks: [],
+                recordingStartTime: 0,
+                recordingTimer: null,
+                estimatedDuration: 0,
+                lastRecordedBlob: null,
+                lastRecordedURL: null,
+                activeAudioContexts: [],
+            };
+
+            const $ = (id) => document.getElementById(id);
+            const canvas = $('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const bgVideoEl = $('bgVideoElement');
+            const hiddenAudioEl = $('hiddenAudioElement');
+            const CANVAS_W = 1080;
+            const CANVAS_H = 1920;
+            canvas.width = CANVAS_W;
+            canvas.height = CANVAS_H;
+
+            function toast(message, type = 'info', duration = 3000) {
+                const t = document.createElement('div');
+                t.className = 'toast ' + type;
+                t.textContent = message;
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), duration);
+            }
+
+            function saveState() {
+                const serializable = { ...state };
+                delete serializable.bgVideoFile;
+                delete serializable.bgVideoURL;
+                delete serializable.avatarFile;
+                delete serializable.avatarURL;
+                delete serializable.audioFile;
+                delete serializable.audioFileURL;
+                delete serializable.openaiAudioURL;
+                delete serializable.mediaRecorder;
+                delete serializable.recordingChunks;
+                delete serializable.lastRecordedBlob;
+                delete serializable.lastRecordedURL;
+                delete serializable.ytToken;
+                delete serializable.activeAudioContexts;
+                try { localStorage.setItem('redditStoryCreator', JSON.stringify(serializable)); } catch (e) {}
+            }
+
+            function loadState() {
+                try {
+                    const saved = localStorage.getItem('redditStoryCreator');
+                    if (saved) Object.assign(state, JSON.parse(saved));
+                } catch (e) {}
+            }
+
+            function exportSettings() {
+                const serializable = { ...state };
+                delete serializable.bgVideoFile;
+                delete serializable.bgVideoURL;
+                delete serializable.avatarFile;
+                delete serializable.avatarURL;
+                delete serializable.audioFile;
+                delete serializable.audioFileURL;
+                delete serializable.openaiAudioURL;
+                delete serializable.mediaRecorder;
+                delete serializable.recordingChunks;
+                delete serializable.lastRecordedBlob;
+                delete serializable.lastRecordedURL;
+                delete serializable.ytToken;
+                delete serializable.activeAudioContexts;
+                const blob = new Blob([JSON.stringify(serializable, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reddit_story_creator_settings.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                toast('Ajustes exportados correctamente', 'success');
+            }
+
+            function importSettings(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        Object.assign(state, parsed);
+                        syncUIFromState();
+                        saveState();
+                        toast('Ajustes importados correctamente', 'success');
+                    } catch (err) {
+                        toast('Error al importar: ' + err.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function formatDuration(seconds) {
+                if (!seconds || seconds < 0) return '0.0s';
+                if (seconds < 60) return seconds.toFixed(1) + 's';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.round(seconds % 60);
+                return mins + 'm ' + secs + 's';
+            }
+
+            function countWords(text) { return text.trim().split(/\s+/).filter(w => w.length > 0).length; }
+            function estimateSpeechDuration(text, rate = 1.0) {
+                const words = countWords(text);
+                const wpm = 150 * rate;
+                return (words / wpm) * 60;
+            }
+            function getAudioDuration(audioEl) {
+                if (audioEl && audioEl.duration && isFinite(audioEl.duration)) return audioEl.duration;
+                return 0;
+            }
+            function updateEstimatedDuration() {
+                let audioDur = 0;
+                if (state.ttsEngine === 'speechSynthesis') audioDur = estimateSpeechDuration(state.storyText, state.ttsRate);
+                else if (state.ttsEngine === 'audioFile' && state.audioFile) audioDur = getAudioDuration(hiddenAudioEl);
+                else if (state.ttsEngine === 'openai' && state.openaiAudioURL) audioDur = getAudioDuration($('openaiAudioPlayer'));
+                else audioDur = estimateSpeechDuration(state.storyText, state.ttsRate);
+                state.estimatedDuration = audioDur + 1.0;
+                $('durationLabel').innerHTML = 'Duración estimada: <strong>' + formatDuration(state.estimatedDuration) + '</strong>';
+                if ($('durationDisplay')) $('durationDisplay').innerHTML = formatDuration(state.estimatedDuration) + ' <small>(' + formatDuration(audioDur) + ' audio + 1s)</small>';
+            }
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    $('tab-' + btn.dataset.tab.replace('tab-', '')).classList.add('active');
+                });
+            });
+
+            function drawRoundRect(ctx, x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+            }
+
+            function wrapText(ctx, text, maxWidth) {
+                const words = text.split(' ');
+                const lines = [];
+                let currentLine = '';
+                for (const word of words) {
+                    const testLine = currentLine ? currentLine + ' ' + word : word;
+                    if (ctx.measureText(testLine).width <= maxWidth && !word.includes('\n')) {
+                        currentLine = testLine;
+                    } else {
+                        if (currentLine) lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                if (currentLine) lines.push(currentLine);
+                return lines;
+            }
+
+            function drawRedditCard(cardX, cardY, cardW, cardH) {
+                const dark = state.cardDarkMode;
+                const bgColor = dark ? '#1a1a2e' : '#ffffff';
+                const textColor = dark ? '#e0e0e0' : '#1a1a1a';
+                const subColor = dark ? '#a0a0a0' : '#666666';
+                const borderColor = dark ? '#333' : '#ddd';
+                const accent = state.cardAccentColor || '#ff4500';
+                const titleFontSize = state.titleFontSize || 32;
+                const topPadding = state.cardTopPadding || 20;
+                const titleGap = state.cardTitleGap || 30;
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 30;
+                ctx.shadowOffsetY = 8;
+                drawRoundRect(ctx, cardX, cardY, cardW, cardH, 18);
+                ctx.fillStyle = bgColor;
+                ctx.fill();
+                ctx.restore();
+
+                drawRoundRect(ctx, cardX, cardY, cardW, cardH, 18);
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                const padding = Math.min(16, cardW * 0.03);
+                const innerX = cardX + padding;
+                const innerW = cardW - padding * 2;
+                let currentY = cardY + topPadding;
+
+                // Subreddit header
+                ctx.font = 'bold 26px "Segoe UI", system-ui, sans-serif';
+                ctx.fillStyle = accent;
+                ctx.textAlign = 'left';
+                ctx.fillText('r/' + state.subreddit, innerX, currentY);
+                currentY += titleGap;  // Configurable space between subreddit and title
+
+                // Title
+                ctx.font = 'bold ' + titleFontSize + 'px "Segoe UI", system-ui, sans-serif';
+                ctx.fillStyle = textColor;
+                const titleLines = wrapText(ctx, state.title, innerW);
+                const titleLineHeight = Math.round(titleFontSize * 1.3);
+                for (const line of titleLines) {
+                    ctx.fillText(line, innerX, currentY);
+                    currentY += titleLineHeight;
+                }
+                currentY += 5;
+
+                // Awards
+                if (state.showAwards && state.awards.trim()) {
+                    const awardList = state.awards.split(',').map(a => a.trim()).filter(a => a);
+                    if (awardList.length > 0) {
+                        ctx.font = '22px "Segoe UI", system-ui, sans-serif';
+                        ctx.fillStyle = '#ffd700';
+                        const awardsText = awardList.join('  ');
+                        ctx.fillText(awardsText, innerX, currentY);
+                        currentY += 25;
+                    }
+                }
+                currentY += 5;
+
+                // Divider
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(innerX, currentY);
+                ctx.lineTo(cardX + cardW - padding, currentY);
+                ctx.stroke();
+                currentY += 12;
+
+                // Bottom row
+                const bottomY = Math.min(currentY, cardY + cardH - padding - 40);
+                const avatarSize = Math.min(40, cardH * 0.1);
+                const avatarX = innerX;
+                const avatarY = bottomY;
+
+                if (state.avatarURL) {
+                    const img = new Image();
+                    img.src = state.avatarURL;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+                    ctx.clip();
+                    try { ctx.drawImage(img, avatarX, avatarY, avatarSize, avatarSize); } catch (e) {}
+                    ctx.restore();
+                } else {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = dark ? '#333' : '#ccc';
+                    ctx.fill();
+                    ctx.fillStyle = dark ? '#aaa' : '#555';
+                    ctx.font = Math.round(avatarSize * 0.45) + 'px "Segoe UI", system-ui, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('👤', avatarX + avatarSize / 2, avatarY + avatarSize / 2 + avatarSize * 0.15);
+                    ctx.restore();
+                }
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.font = Math.round(avatarSize * 0.5) + 'px "Segoe UI", system-ui, sans-serif';
+                ctx.fillStyle = subColor;
+                ctx.textAlign = 'left';
+                ctx.fillText('u/' + state.username, avatarX + avatarSize + 12, avatarY + avatarSize / 2 + avatarSize * 0.18);
+
+                ctx.font = Math.round(avatarSize * 0.45) + 'px "Segoe UI", system-ui, sans-serif';
+                ctx.fillStyle = subColor;
+                ctx.textAlign = 'right';
+                const rightX = cardX + cardW - padding;
+                const statsText = '👍 ' + state.likes + '  💬 ' + state.comments + '  🔗 ' + state.shares;
+                ctx.fillText(statsText, rightX, avatarY + avatarSize / 2 + avatarSize * 0.15);
+
+                if (state.showVoteArrows) {
+                    ctx.font = Math.round(avatarSize * 0.65) + 'px "Segoe UI", system-ui, sans-serif';
+                    ctx.fillStyle = accent;
+                    ctx.textAlign = 'center';
+                    const arrowX = cardX - 35;
+                    const arrowY = cardY + cardH / 2 - 20;
+                    ctx.fillText('▲', arrowX, arrowY);
+                    ctx.fillText('▼', arrowX, arrowY + 40);
+                    ctx.font = Math.round(avatarSize * 0.4) + 'px "Segoe UI", system-ui, sans-serif';
+                    ctx.fillStyle = subColor;
+                    ctx.fillText(state.likes, arrowX, arrowY + 28);
+                }
+            }
+
+            function renderCanvas() {
+                ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+                if (bgVideoEl.src && bgVideoEl.readyState >= 2) {
+                    const vw = bgVideoEl.videoWidth;
+                    const vh = bgVideoEl.videoHeight;
+                    if (vw > 0 && vh > 0) {
+                        const scale = Math.max(CANVAS_W / vw, CANVAS_H / vh);
+                        const sw = vw * scale;
+                        const sh = vh * scale;
+                        const sx = (CANVAS_W - sw) / 2;
+                        const sy = (CANVAS_H - sh) / 2;
+                        ctx.drawImage(bgVideoEl, sx, sy, sw, sh);
+                    }
+                } else {
+                    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+                    grad.addColorStop(0, '#1a1a2e');
+                    grad.addColorStop(0.5, '#16213e');
+                    grad.addColorStop(1, '#0f0f1a');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+                    ctx.font = '120px "Segoe UI", system-ui, sans-serif';
+                    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🎬', CANVAS_W / 2, CANVAS_H / 2 - 20);
+                    ctx.font = '28px "Segoe UI", system-ui, sans-serif';
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    ctx.fillText('Sube un video de fondo', CANVAS_W / 2, CANVAS_H / 2 + 50);
+                }
+                if (state.darkOverlay > 0) {
+                    ctx.fillStyle = 'rgba(0,0,0,' + state.darkOverlay + ')';
+                    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+                }
+                const cardW = state.cardWidthPx;
+                const cardH = state.cardHeightPx;
+                const cardX = Math.round((CANVAS_W - cardW) / 2);
+                const cardY = Math.round(CANVAS_H * (state.cardYPos / 100) - cardH / 2);
+                drawRedditCard(cardX, cardY, cardW, cardH);
+                const vignette = ctx.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.35, CANVAS_W / 2, CANVAS_H / 2, CANVAS_H * 0.75);
+                vignette.addColorStop(0, 'rgba(0,0,0,0)');
+                vignette.addColorStop(1, 'rgba(0,0,0,0.3)');
+                ctx.fillStyle = vignette;
+                ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            }
+
+            function animationLoop() { renderCanvas(); requestAnimationFrame(animationLoop); }
+            animationLoop();
+
+            function syncUIFromState() {
+                $('darkOverlay').value = state.darkOverlay;
+                $('darkOverlayVal').textContent = state.darkOverlay;
+                $('cardWidthPct').value = state.cardWidthPct;
+                $('cardWidthPctVal').textContent = state.cardWidthPct + '%';
+                $('cardWidthPx').value = state.cardWidthPx;
+                $('cardHeightPx').value = state.cardHeightPx;
+                $('cardScale').value = state.cardScale;
+                $('cardScaleVal').textContent = state.cardScale.toFixed(2) + 'x';
+                $('cardYPos').value = state.cardYPos;
+                $('cardYPosVal').textContent = state.cardYPos + '%';
+                $('cardTopPadding').value = state.cardTopPadding;
+                $('cardTitleGap').value = state.cardTitleGap;
+                $('cardSubreddit').value = state.subreddit;
+                $('cardTitle').value = state.title;
+                updateTitleCharCount();
+                $('cardUsername').value = state.username;
+                $('cardLikes').value = state.likes;
+                $('cardComments').value = state.comments;
+                $('cardShares').value = state.shares;
+                $('cardAwards').value = state.awards;
+                $('cardShowAwards').checked = state.showAwards;
+                $('cardShowVoteArrows').checked = state.showVoteArrows;
+                $('cardDarkMode').checked = state.cardDarkMode;
+                $('cardAccentColor').value = state.cardAccentColor;
+                $('titleFontSize').value = state.titleFontSize;
+                $('titleFontSizeVal').textContent = state.titleFontSize + 'px';
+                if (state.avatarURL) {
+                    $('avatarPreview').src = state.avatarURL;
+                    $('avatarPreview').style.display = 'block';
+                }
+                $('storyText').value = state.storyText;
+                updateStoryWordCount();
+                $('ttsEngine').value = state.ttsEngine;
+                $('ttsRate').value = state.ttsRate;
+                $('ttsRateVal').textContent = state.ttsRate.toFixed(2) + 'x';
+                $('ttsPitch').value = state.ttsPitch;
+                $('ttsPitchVal').textContent = state.ttsPitch.toFixed(2);
+                $('openaiApiKey').value = state.openaiApiKey;
+                $('openaiVoice').value = state.openaiVoice;
+                $('openaiTtsModel').value = state.openaiTtsModel;
+                $('aiWordCount').value = state.aiWordCount;
+                $('aiCustomInstructions').value = state.aiCustomInstructions;
+                if (state.selectedOllamaModel) $('ollamaModelSelect').value = state.selectedOllamaModel;
+                $('aiStoryText').value = state.aiStory;
+                updateAIStoryWordCount();
+                $('aiTitleText').value = state.aiTitle;
+                $('aiSubredditText').value = state.aiSubreddit;
+                $('googleClientId').value = state.googleClientId;
+                $('ytTitle').value = state.title;
+                updateEstimatedDuration();
+                updateTTSEngineVisibility();
+                updateVoiceList();
+            }
+
+            function updateTitleCharCount() { $('titleCharCount').textContent = state.title.length + ' caracteres'; }
+            function updateStoryWordCount() { $('storyWordCount').textContent = countWords(state.storyText); updateEstimatedDuration(); }
+            function updateAIStoryWordCount() { $('aiStoryWordCount').textContent = countWords(state.aiStory); }
+            function updateTTSEngineVisibility() {
+                $('ttsSpeechSynthesisSection').classList.toggle('hidden', state.ttsEngine !== 'speechSynthesis');
+                $('ttsAudioFileSection').classList.toggle('hidden', state.ttsEngine !== 'audioFile');
+                $('ttsOpenAISection').classList.toggle('hidden', state.ttsEngine !== 'openai');
+            }
+
+            // Event Listeners
+            $('bgVideoInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    state.bgVideoFile = file;
+                    if (state.bgVideoURL) URL.revokeObjectURL(state.bgVideoURL);
+                    state.bgVideoURL = URL.createObjectURL(file);
+                    bgVideoEl.src = state.bgVideoURL;
+                    bgVideoEl.load();
+                    bgVideoEl.play().catch(() => {});
+                    toast('Video de fondo cargado', 'success');
+                    saveState();
+                }
+            });
+            $('btnRemoveBgVideo').addEventListener('click', () => {
+                if (state.bgVideoURL) URL.revokeObjectURL(state.bgVideoURL);
+                state.bgVideoFile = null;
+                state.bgVideoURL = null;
+                bgVideoEl.src = '';
+                bgVideoEl.load();
+                $('bgVideoInput').value = '';
+                toast('Video de fondo eliminado', 'info');
+                saveState();
+            });
+            $('darkOverlay').addEventListener('input', (e) => { state.darkOverlay = parseFloat(e.target.value); $('darkOverlayVal').textContent = state.darkOverlay; saveState(); });
+            $('cardWidthPx').addEventListener('input', (e) => {
+                state.cardWidthPx = parseInt(e.target.value) || 842;
+                state.cardWidthPct = Math.round((state.cardWidthPx / CANVAS_W) * 100);
+                $('cardWidthPct').value = state.cardWidthPct;
+                $('cardWidthPctVal').textContent = state.cardWidthPct + '%';
+                // Actualizar base y escala relativa
+                if (state.cardBaseWidth > 0) {
+                    state.cardScale = state.cardWidthPx / state.cardBaseWidth;
+                    $('cardScale').value = state.cardScale;
+                    $('cardScaleVal').textContent = state.cardScale.toFixed(2) + 'x';
+                }
+                saveState();
+            });
+            $('cardHeightPx').addEventListener('input', (e) => {
+                state.cardHeightPx = parseInt(e.target.value) || 350;
+                if (state.cardBaseHeight > 0) {
+                    state.cardScale = state.cardHeightPx / state.cardBaseHeight;
+                    $('cardScale').value = state.cardScale;
+                    $('cardScaleVal').textContent = state.cardScale.toFixed(2) + 'x';
+                }
+                saveState();
+            });
+            $('cardScale').addEventListener('input', (e) => {
+                state.cardScale = parseFloat(e.target.value);
+                $('cardScaleVal').textContent = state.cardScale.toFixed(2) + 'x';
+                state.cardWidthPx = Math.round(state.cardBaseWidth * state.cardScale);
+                state.cardHeightPx = Math.round(state.cardBaseHeight * state.cardScale);
+                $('cardWidthPx').value = state.cardWidthPx;
+                $('cardHeightPx').value = state.cardHeightPx;
+                state.cardWidthPct = Math.round((state.cardWidthPx / CANVAS_W) * 100);
+                $('cardWidthPct').value = state.cardWidthPct;
+                $('cardWidthPctVal').textContent = state.cardWidthPct + '%';
+                saveState();
+            });
+            $('cardWidthPct').addEventListener('input', (e) => {
+                state.cardWidthPct = parseInt(e.target.value);
+                $('cardWidthPctVal').textContent = state.cardWidthPct + '%';
+                state.cardWidthPx = Math.round(CANVAS_W * (state.cardWidthPct / 100));
+                $('cardWidthPx').value = state.cardWidthPx;
+                state.cardScale = state.cardWidthPx / state.cardBaseWidth;
+                $('cardScale').value = state.cardScale;
+                $('cardScaleVal').textContent = state.cardScale.toFixed(2) + 'x';
+                saveState();
+            });
+            $('cardYPos').addEventListener('input', (e) => { state.cardYPos = parseInt(e.target.value); $('cardYPosVal').textContent = state.cardYPos + '%'; saveState(); });
+            $('cardTopPadding').addEventListener('input', (e) => { state.cardTopPadding = parseInt(e.target.value) || 20; saveState(); });
+            $('cardTitleGap').addEventListener('input', (e) => { state.cardTitleGap = parseInt(e.target.value) || 30; saveState(); });
+
+            // Reddit Card listeners (similares a antes)
+            $('cardSubreddit').addEventListener('input', (e) => { state.subreddit = e.target.value; saveState(); });
+            $('cardTitle').addEventListener('input', (e) => { state.title = e.target.value; updateTitleCharCount(); saveState(); });
+            $('cardUsername').addEventListener('input', (e) => { state.username = e.target.value; saveState(); });
+            $('cardLikes').addEventListener('input', (e) => { state.likes = e.target.value; saveState(); });
+            $('cardComments').addEventListener('input', (e) => { state.comments = e.target.value; saveState(); });
+            $('cardShares').addEventListener('input', (e) => { state.shares = e.target.value; saveState(); });
+            $('cardAwards').addEventListener('input', (e) => { state.awards = e.target.value; saveState(); });
+            $('cardShowAwards').addEventListener('change', (e) => { state.showAwards = e.target.checked; saveState(); });
+            $('cardShowVoteArrows').addEventListener('change', (e) => { state.showVoteArrows = e.target.checked; saveState(); });
+            $('cardDarkMode').addEventListener('change', (e) => { state.cardDarkMode = e.target.checked; saveState(); });
+            $('cardAccentColor').addEventListener('input', (e) => { state.cardAccentColor = e.target.value; saveState(); });
+            $('titleFontSize').addEventListener('input', (e) => { state.titleFontSize = parseInt(e.target.value); $('titleFontSizeVal').textContent = state.titleFontSize + 'px'; saveState(); });
+            $('cardAvatarInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    state.avatarFile = file;
+                    if (state.avatarURL) URL.revokeObjectURL(state.avatarURL);
+                    state.avatarURL = URL.createObjectURL(file);
+                    $('avatarPreview').src = state.avatarURL;
+                    $('avatarPreview').style.display = 'block';
+                    toast('Foto de perfil cargada', 'success');
+                    saveState();
+                }
+            });
+
+            // Audio listeners
+            $('storyText').addEventListener('input', (e) => { state.storyText = e.target.value; updateStoryWordCount(); saveState(); });
+            $('ttsEngine').addEventListener('change', (e) => { state.ttsEngine = e.target.value; updateTTSEngineVisibility(); updateEstimatedDuration(); saveState(); });
+            $('ttsRate').addEventListener('input', (e) => { state.ttsRate = parseFloat(e.target.value); $('ttsRateVal').textContent = state.ttsRate.toFixed(2) + 'x'; updateEstimatedDuration(); saveState(); });
+            $('ttsPitch').addEventListener('input', (e) => { state.ttsPitch = parseFloat(e.target.value); $('ttsPitchVal').textContent = state.ttsPitch.toFixed(2); saveState(); });
+            $('audioFileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    state.audioFile = file;
+                    if (state.audioFileURL) URL.revokeObjectURL(state.audioFileURL);
+                    state.audioFileURL = URL.createObjectURL(file);
+                    hiddenAudioEl.src = state.audioFileURL;
+                    hiddenAudioEl.load();
+                    setTimeout(() => updateEstimatedDuration(), 300);
+                    toast('Audio cargado', 'success');
+                    saveState();
+                }
+            });
+            $('openaiApiKey').addEventListener('input', (e) => { state.openaiApiKey = e.target.value; saveState(); });
+            $('openaiVoice').addEventListener('change', (e) => { state.openaiVoice = e.target.value; saveState(); });
+            $('openaiTtsModel').addEventListener('change', (e) => { state.openaiTtsModel = e.target.value; saveState(); });
+            $('btnTestVoice').addEventListener('click', testVoice);
+            $('btnGenerateOpenAIAudio').addEventListener('click', generateOpenAIAudio);
+
+            // AI listeners (similares)
+            $('aiWordCount').addEventListener('input', (e) => { state.aiWordCount = parseInt(e.target.value) || 150; saveState(); });
+            $('aiCustomInstructions').addEventListener('input', (e) => { state.aiCustomInstructions = e.target.value; saveState(); });
+            $('btnRefreshOllama').addEventListener('click', checkOllamaConnection);
+            $('btnFetchModels').addEventListener('click', fetchOllamaModels);
+            $('ollamaModelSelect').addEventListener('change', (e) => { state.selectedOllamaModel = e.target.value; saveState(); });
+            $('btnGenerateAI').addEventListener('click', generateWithAI);
+            $('aiStoryText').addEventListener('input', (e) => { state.aiStory = e.target.value; updateAIStoryWordCount(); });
+            $('aiTitleText').addEventListener('input', (e) => { state.aiTitle = e.target.value; });
+            $('aiSubredditText').addEventListener('input', (e) => { state.aiSubreddit = e.target.value; });
+            $('btnApplyAI').addEventListener('click', applyAIToFields);
+            $('btnClearAI').addEventListener('click', () => { state.aiStory = ''; state.aiTitle = ''; state.aiSubreddit = ''; syncUIFromState(); });
+
+            // Export listeners
+            $('exportFormat').addEventListener('change', () => { saveState(); });
+            $('btnStartRecording').addEventListener('click', startRecording);
+            $('btnStopRecording').addEventListener('click', stopRecording);
+            $('googleClientId').addEventListener('input', (e) => { state.googleClientId = e.target.value; saveState(); });
+            $('btnExportSettings').addEventListener('click', exportSettings);
+            $('btnImportSettings').addEventListener('click', () => $('importSettingsFile').click());
+            $('importSettingsFile').addEventListener('change', (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); e.target.value = ''; });
+            $('btnConnectYouTube').addEventListener('click', connectYouTube);
+            $('btnUploadYouTube').addEventListener('click', uploadToYouTube);
+
+            // Voice list
+            function updateVoiceList() {
+                const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+                const voiceListEl = $('voiceList');
+                if (voices.length === 0) {
+                    voiceListEl.innerHTML = '<div style="padding:10px;font-size:0.8em;color:var(--text-dim);">No hay voces disponibles.</div>';
+                    return;
+                }
+                let html = '';
+                voices.forEach((voice) => {
+                    const active = state.selectedVoiceURI === voice.voiceURI ? 'active' : '';
+                    html += `<div class="voice-option ${active}" data-voice-uri="${voice.voiceURI}">
+                                <span class="voice-name">${voice.name}</span>
+                                <span class="voice-lang">${voice.lang}</span>
+                             </div>`;
+                });
+                voiceListEl.innerHTML = html;
+                voiceListEl.querySelectorAll('.voice-option').forEach(el => {
+                    el.addEventListener('click', () => {
+                        state.selectedVoiceURI = el.dataset.voiceUri;
+                        updateVoiceList();
+                        saveState();
+                    });
+                });
+                if (!state.selectedVoiceURI && voices.length > 0) {
+                    state.selectedVoiceURI = voices[0].voiceURI;
+                    updateVoiceList();
+                }
+            }
+            if (window.speechSynthesis) {
+                window.speechSynthesis.onvoiceschanged = updateVoiceList;
+                setTimeout(updateVoiceList, 300);
+            }
+
+            function testVoice() {
+                if (state.ttsEngine === 'speechSynthesis') {
+                    const utterance = new SpeechSynthesisUtterance('Esta es una prueba de voz para tu historia de Reddit.');
+                    const voices = window.speechSynthesis.getVoices();
+                    const voice = voices.find(v => v.voiceURI === state.selectedVoiceURI);
+                    if (voice) utterance.voice = voice;
+                    utterance.rate = state.ttsRate;
+                    utterance.pitch = state.ttsPitch;
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(utterance);
+                } else if (state.ttsEngine === 'audioFile' && state.audioFileURL) {
+                    hiddenAudioEl.currentTime = 0;
+                    hiddenAudioEl.play();
+                    setTimeout(() => hiddenAudioEl.pause(), 5000);
+                } else if (state.ttsEngine === 'openai' && state.openaiAudioURL) {
+                    $('openaiAudioPlayer').currentTime = 0;
+                    $('openaiAudioPlayer').play();
+                    setTimeout(() => $('openaiAudioPlayer').pause(), 5000);
+                } else {
+                    toast('No hay audio para probar', 'error');
+                }
+            }
+
+            async function generateOpenAIAudio() {
+                if (!state.openaiApiKey || !state.storyText.trim()) {
+                    toast('Necesitas API key de OpenAI y texto de historia', 'error');
+                    return;
+                }
+                const statusEl = $('openaiAudioStatus');
+                statusEl.textContent = 'Generando audio con OpenAI...';
+                try {
+                    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + state.openaiApiKey, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model: state.openaiTtsModel, voice: state.openaiVoice, input: state.storyText }),
+                    });
+                    if (!response.ok) {
+                        const err = await response.text();
+                        throw new Error('Error ' + response.status + ': ' + err);
+                    }
+                    const blob = await response.blob();
+                    if (state.openaiAudioURL) URL.revokeObjectURL(state.openaiAudioURL);
+                    state.openaiAudioURL = URL.createObjectURL(blob);
+                    const audioPlayer = $('openaiAudioPlayer');
+                    audioPlayer.src = state.openaiAudioURL;
+                    audioPlayer.style.display = 'block';
+                    statusEl.textContent = '✅ Audio generado correctamente.';
+                    setTimeout(() => updateEstimatedDuration(), 300);
+                    saveState();
+                } catch (err) {
+                    statusEl.textContent = '❌ Error: ' + err.message;
+                    toast('Error generando audio OpenAI: ' + err.message, 'error');
+                }
+            }
+
+            async function checkOllamaConnection() {
+                const statusEl = $('ollamaStatus');
+                const dot = $('ollamaDot');
+                const textEl = $('ollamaStatusText');
+                statusEl.innerHTML = '<span class="status-dot yellow"></span><span>Comprobando...</span>';
+                try {
+                    const response = await fetch(state.ollamaBase + '/api/tags', { method: 'GET', headers: { 'Accept': 'application/json' }, mode: 'cors' });
+                    if (response.ok) {
+                        dot.className = 'status-dot green';
+                        textEl.textContent = 'Conectado';
+                        statusEl.innerHTML = '<span class="status-dot green"></span><span>✅ Ollama conectado</span>';
+                        fetchOllamaModels();
+                    } else throw new Error('HTTP ' + response.status);
+                } catch (err) {
+                    dot.className = 'status-dot red';
+                    textEl.textContent = 'Error';
+                    statusEl.innerHTML = '<span class="status-dot red"></span><span>❌ No se puede conectar a Ollama.</span>';
+                }
+            }
+
+            async function fetchOllamaModels() {
+                const select = $('ollamaModelSelect');
+                select.innerHTML = '<option value="">Cargando modelos...</option>';
+                try {
+                    const response = await fetch(state.ollamaBase + '/api/tags', { method: 'GET', headers: { 'Accept': 'application/json' }, mode: 'cors' });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const data = await response.json();
+                    state.ollamaModels = data.models || [];
+                    if (state.ollamaModels.length === 0) {
+                        select.innerHTML = '<option value="">— Sin modelos instalados —</option>';
+                    } else {
+                        let html = '<option value="">— Selecciona un modelo —</option>';
+                        state.ollamaModels.forEach(m => {
+                            const selected = m.name === state.selectedOllamaModel ? 'selected' : '';
+                            html += `<option value="${m.name}" ${selected}>${m.name}</option>`;
+                        });
+                        select.innerHTML = html;
+                    }
+                } catch (err) {
+                    select.innerHTML = '<option value="">— Error de conexión —</option>';
+                    toast('Error al listar modelos: ' + err.message, 'error');
+                }
+            }
+
+            async function generateWithAI() {
+                if (!state.selectedOllamaModel) {
+                    toast('Selecciona un modelo de Ollama primero', 'error');
+                    return;
+                }
+                const wordCount = state.aiWordCount || 150;
+                const customInstr = state.aiCustomInstructions.trim();
+                $('aiProgress').classList.remove('hidden');
+                $('aiError').classList.add('hidden');
+                $('btnGenerateAI').disabled = true;
+                $('aiProgressBar').style.width = '5%';
+                $('aiProgressText').textContent = 'Conectando con Ollama...';
+                const systemPrompt = 'Eres un asistente creativo que escribe contenido para videos cortos de Reddit. IMPORTANTE: Solo escribes el texto solicitado, sin introducciones ni comentarios meta.';
+                try {
+                    $('aiProgressBar').style.width = '30%';
+                    $('aiProgressText').textContent = 'Generando historia (' + wordCount + ' palabras)...';
+                    let storyPrompt = 'Escribe una historia corta estilo Reddit de aproximadamente ' + wordCount + ' palabras. Solo el texto de la historia.';
+                    if (customInstr) storyPrompt += ' Instrucciones adicionales: ' + customInstr;
+                    const storyResponse = await ollamaGenerate(state.selectedOllamaModel, storyPrompt, systemPrompt);
+                    state.aiStory = storyResponse.trim();
+                    $('aiProgressBar').style.width = '60%';
+                    $('aiProgressText').textContent = 'Generando título...';
+                    const titlePrompt = 'Basándote en la siguiente historia, crea un título corto y atractivo para una tarjeta de Reddit (máximo 80 caracteres). Historia: ' + state.aiStory;
+                    const titleResponse = await ollamaGenerate(state.selectedOllamaModel, titlePrompt, systemPrompt);
+                    state.aiTitle = titleResponse.trim().replace(/^["']|["']$/g, '');
+                    $('aiProgressBar').style.width = '80%';
+                    $('aiProgressText').textContent = 'Generando subreddit...';
+                    const subredditPrompt = 'Sugiere un nombre de subreddit apropiado para esta historia (solo el nombre sin "r/"). Historia: ' + state.aiStory;
+                    const subredditResponse = await ollamaGenerate(state.selectedOllamaModel, subredditPrompt, systemPrompt);
+                    state.aiSubreddit = subredditResponse.trim().replace(/^["']|["']$/g, '').replace(/^r\//, '');
+                    $('aiProgressBar').style.width = '100%';
+                    $('aiProgressText').textContent = '✅ Generación completada';
+                    syncUIFromState();
+                    applyAIToFields();
+                    toast('Historia generada con éxito', 'success');
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    document.querySelector('[data-tab="tab-ai-response"]').classList.add('active');
+                    $('tab-ai-response').classList.add('active');
+                } catch (err) {
+                    $('aiError').textContent = 'Error: ' + err.message;
+                    $('aiError').classList.remove('hidden');
+                    toast('Error generando con IA: ' + err.message, 'error');
+                } finally {
+                    $('btnGenerateAI').disabled = false;
+                    setTimeout(() => { $('aiProgress').classList.add('hidden'); $('aiProgressBar').style.width = '0%'; }, 1500);
+                    saveState();
+                }
+            }
+
+            async function ollamaGenerate(model, prompt, systemPrompt) {
+                const response = await fetch(state.ollamaBase + '/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    mode: 'cors',
+                    body: JSON.stringify({ model, prompt, system: systemPrompt, stream: false, options: { temperature: 0.7, top_p: 0.9 } }),
+                });
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error('HTTP ' + response.status + ': ' + err.substring(0, 200));
+                }
+                const data = await response.json();
+                return data.response || '';
+            }
+
+            function applyAIToFields() {
+                if (state.aiStory.trim()) { state.storyText = state.aiStory.trim(); $('storyText').value = state.storyText; updateStoryWordCount(); }
+                if (state.aiTitle.trim()) { state.title = state.aiTitle.trim(); $('cardTitle').value = state.title; updateTitleCharCount(); }
+                if (state.aiSubreddit.trim()) { state.subreddit = state.aiSubreddit.trim().replace(/^r\//, ''); $('cardSubreddit').value = state.subreddit; }
+                $('ytTitle').value = state.title;
+                updateEstimatedDuration();
+                saveState();
+                toast('Textos aplicados a la app', 'success');
+            }
+
+            // ==================== RECORDING (con corrección de duración) ====================
+            async function startRecording() {
+                if (state.isRecording) return;
+                if (!state.bgVideoURL) {
+                    toast('Sube un video de fondo primero', 'error');
+                    return;
+                }
+                let audioDuration = 0;
+                if (state.ttsEngine === 'speechSynthesis') audioDuration = estimateSpeechDuration(state.storyText, state.ttsRate);
+                else if (state.ttsEngine === 'audioFile' && state.audioFileURL) audioDuration = getAudioDuration(hiddenAudioEl);
+                else if (state.ttsEngine === 'openai' && state.openaiAudioURL) audioDuration = getAudioDuration($('openaiAudioPlayer'));
+                const totalDuration = Math.max(audioDuration + 1.0, 3.0);
+                try {
+                    const canvasStream = canvas.captureStream(30);
+                    const videoTracks = canvasStream.getVideoTracks();
+                    let audioTracks = [];
+                    if (state.ttsEngine === 'speechSynthesis') {
+                        try {
+                            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: false, audio: true });
+                            audioTracks = displayStream.getAudioTracks();
+                            toast('Capturando audio del sistema. Asegúrate de marcar "Compartir audio" en el diálogo.', 'info');
+                        } catch (displayErr) {
+                            toast('No se pudo capturar audio del sistema. Se grabará sin audio.', 'error');
+                        }
+                    } else if (state.ttsEngine === 'audioFile' && state.audioFileURL) {
+                        const tempAudio = document.createElement('audio');
+                        tempAudio.src = state.audioFileURL;
+                        tempAudio.loop = false;
+                        document.body.appendChild(tempAudio);
+                        const audioCtx = new AudioContext();
+                        const dest = audioCtx.createMediaStreamDestination();
+                        const source = audioCtx.createMediaElementSource(tempAudio);
+                        source.connect(dest);
+                        source.connect(audioCtx.destination);
+                        audioTracks = dest.stream.getAudioTracks();
+                        state.activeAudioContexts.push({ audioCtx, tempAudio });
+                        tempAudio.currentTime = 0;
+                        tempAudio.play();
+                    } else if (state.ttsEngine === 'openai' && state.openaiAudioURL) {
+                        const tempAudio = document.createElement('audio');
+                        tempAudio.src = state.openaiAudioURL;
+                        tempAudio.loop = false;
+                        document.body.appendChild(tempAudio);
+                        const audioCtx = new AudioContext();
+                        const dest = audioCtx.createMediaStreamDestination();
+                        const source = audioCtx.createMediaElementSource(tempAudio);
+                        source.connect(dest);
+                        source.connect(audioCtx.destination);
+                        audioTracks = dest.stream.getAudioTracks();
+                        state.activeAudioContexts.push({ audioCtx, tempAudio });
+                        tempAudio.currentTime = 0;
+                        tempAudio.play();
+                    } else {
+                        toast('No hay audio disponible. Usa TTS o sube un archivo de audio.', 'error');
+                        return;
+                    }
+                    const allTracks = [...videoTracks, ...audioTracks];
+                    const combinedStream = new MediaStream(allTracks);
+                    const mimeType = $('exportFormat').value === 'mp4' ?
+                        (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm') : 'video/webm';
+                    const recorder = new MediaRecorder(combinedStream, { mimeType: mimeType, videoBitsPerSecond: 8000000, audioBitsPerSecond: 128000 });
+                    state.mediaRecorder = recorder;
+                    state.recordingChunks = [];
+                    state.isRecording = true;
+                    state.recordingStartTime = Date.now();
+                    recorder.ondataavailable = (e) => { if (e.data.size > 0) state.recordingChunks.push(e.data); };
+                    recorder.onstop = () => {
+                        const rawBlob = new Blob(state.recordingChunks, { type: recorder.mimeType });
+                        const duration = (Date.now() - state.recordingStartTime) / 1000;
+                        // Corregir duración del WebM
+                        if (window.fixWebmDuration && rawBlob.type.includes('webm')) {
+                            window.fixWebmDuration(rawBlob, duration, (fixedBlob) => {
+                                processRecordedBlob(fixedBlob);
+                            });
+                        } else {
+                            processRecordedBlob(rawBlob);
+                        }
+                    };
+                    recorder.start(200);
+                    $('btnStartRecording').classList.add('hidden');
+                    $('btnStopRecording').classList.remove('hidden');
+                    $('recordingIndicator').classList.add('active');
+                    startRecordingTimer(totalDuration);
+                    if (state.ttsEngine === 'speechSynthesis') {
+                        const utterance = new SpeechSynthesisUtterance(state.storyText);
+                        const voices = window.speechSynthesis.getVoices();
+                        const voice = voices.find(v => v.voiceURI === state.selectedVoiceURI);
+                        if (voice) utterance.voice = voice;
+                        utterance.rate = state.ttsRate;
+                        utterance.pitch = state.ttsPitch;
+                        window.speechSynthesis.cancel();
+                        window.speechSynthesis.speak(utterance);
+                        utterance.onend = () => { setTimeout(() => stopRecording(), 1000); };
+                        utterance.onerror = () => { setTimeout(() => stopRecording(), 1000); };
+                        setTimeout(() => { if (state.isRecording) stopRecording(); }, (totalDuration + 3) * 1000);
+                    } else {
+                        const tempAudio = state.activeAudioContexts.length > 0 ? state.activeAudioContexts[state.activeAudioContexts.length - 1].tempAudio : null;
+                        if (tempAudio) {
+                            tempAudio.onended = () => { setTimeout(() => stopRecording(), 1000); };
+                            setTimeout(() => { if (state.isRecording) stopRecording(); }, (totalDuration + 3) * 1000);
+                        } else {
+                            setTimeout(() => stopRecording(), 1000);
+                        }
+                    }
+                } catch (err) {
+                    toast('Error al iniciar grabación: ' + err.message, 'error');
+                    state.isRecording = false;
+                    $('btnStartRecording').classList.remove('hidden');
+                    $('btnStopRecording').classList.add('hidden');
+                    $('recordingIndicator').classList.remove('active');
+                    stopRecordingTimer();
+                    state.activeAudioContexts.forEach(({ audioCtx, tempAudio }) => { try { tempAudio.pause(); } catch(e) {} try { audioCtx.close(); } catch(e) {} try { tempAudio.remove(); } catch(e) {} });
+                    state.activeAudioContexts = [];
+                }
+            }
+
+            function processRecordedBlob(blob) {
+                state.lastRecordedBlob = blob;
+                if (state.lastRecordedURL) URL.revokeObjectURL(state.lastRecordedURL);
+                state.lastRecordedURL = URL.createObjectURL(blob);
+                state.isRecording = false;
+                stopRecordingTimer();
+                $('btnStartRecording').classList.remove('hidden');
+                $('btnStopRecording').classList.add('hidden');
+                $('recordingIndicator').classList.remove('active');
+                state.activeAudioContexts.forEach(({ audioCtx, tempAudio }) => { try { tempAudio.pause(); } catch(e) {} try { audioCtx.close(); } catch(e) {} try { tempAudio.remove(); } catch(e) {} });
+                state.activeAudioContexts = [];
+                const a = document.createElement('a');
+                a.href = state.lastRecordedURL;
+                a.download = 'reddit_story_' + Date.now() + (blob.type.includes('mp4') ? '.mp4' : '.webm');
+                a.click();
+                toast('✅ Video grabado y descargado correctamente', 'success');
+                $('btnUploadYouTube').disabled = false;
+            }
+
+            function stopRecording() {
+                if (state.mediaRecorder && state.isRecording) {
+                    try { state.mediaRecorder.stop(); } catch (e) { toast('Error al detener: ' + e.message, 'error'); }
+                }
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                if (hiddenAudioEl) hiddenAudioEl.pause();
+            }
+
+            function startRecordingTimer(totalDuration) {
+                stopRecordingTimer();
+                const totalSecs = Math.max(totalDuration, 3);
+                state.recordingTimer = setInterval(() => {
+                    const elapsed = (Date.now() - state.recordingStartTime) / 1000;
+                    $('recordingTime').textContent = 'Grabando... ' + elapsed.toFixed(1) + 's / ~' + totalSecs.toFixed(1) + 's';
+                    if (elapsed >= totalSecs + 2) stopRecording();
+                }, 100);
+            }
+            function stopRecordingTimer() {
+                if (state.recordingTimer) { clearInterval(state.recordingTimer); state.recordingTimer = null; }
+            }
+
+            // ==================== YOUTUBE ====================
+            let googleTokenClient = null;
+            function connectYouTube() {
+                const clientId = state.googleClientId.trim();
+                if (!clientId) { toast('Introduce tu Google API Client ID primero', 'error'); return; }
+                if (!window.google || !google.accounts) {
+                    const script = document.createElement('script');
+                    script.src = 'https://accounts.google.com/gsi/client';
+                    script.onload = () => initGoogleAuth(clientId);
+                    document.head.appendChild(script);
+                } else initGoogleAuth(clientId);
+            }
+            function initGoogleAuth(clientId) {
+                googleTokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube',
+                    callback: (tokenResponse) => {
+                        if (tokenResponse && tokenResponse.access_token) {
+                            state.ytToken = tokenResponse.access_token;
+                            $('ytDot').className = 'status-dot green';
+                            $('ytStatusText').textContent = 'Conectado';
+                            $('btnUploadYouTube').disabled = false;
+                            toast('✅ Conectado a YouTube', 'success');
+                            saveState();
+                        }
+                    },
+                    error_callback: () => { $('ytDot').className = 'status-dot red'; $('ytStatusText').textContent = 'Error'; toast('Error OAuth', 'error'); }
+                });
+                googleTokenClient.requestAccessToken();
+            }
+            async function uploadToYouTube() {
+                if (!state.ytToken) { toast('Conecta tu cuenta de YouTube primero', 'error'); return; }
+                if (!state.lastRecordedBlob) { toast('No hay video grabado. Graba un video primero.', 'error'); return; }
+                const statusEl = $('ytUploadStatus');
+                statusEl.textContent = 'Subiendo video a YouTube...';
+                $('btnUploadYouTube').disabled = true;
+                try {
+                    const title = $('ytTitle').value || state.title || 'Reddit Story';
+                    const description = $('ytDescription').value || 'Historia de Reddit #shorts #reddit';
+                    const metadata = { snippet: { title: title.substring(0,100), description: description.substring(0,5000), tags: ['reddit','shorts','historias'], categoryId: '22' }, status: { privacyStatus: 'public', selfDeclaredMadeForKids: false } };
+                    const initRes = await fetch('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', { method: 'POST', headers: { 'Authorization': 'Bearer ' + state.ytToken, 'Content-Type': 'application/json', 'X-Upload-Content-Type': state.lastRecordedBlob.type, 'X-Upload-Content-Length': state.lastRecordedBlob.size }, body: JSON.stringify(metadata) });
+                    if (!initRes.ok) { const errText = await initRes.text(); throw new Error('Error inicializando upload: ' + initRes.status + ' ' + errText.substring(0,200)); }
+                    const uploadUrl = initRes.headers.get('Location');
+                    if (!uploadUrl) throw new Error('No se recibió URL de subida');
+                    const uploadRes = await fetch(uploadUrl, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + state.ytToken, 'Content-Type': state.lastRecordedBlob.type }, body: state.lastRecordedBlob });
+                    if (!uploadRes.ok) { const errText = await uploadRes.text(); throw new Error('Error subiendo video: ' + uploadRes.status + ' ' + errText.substring(0,200)); }
+                    const uploadData = await uploadRes.json();
+                    statusEl.textContent = '✅ Video subido a YouTube: ' + uploadData.id;
+                    toast('✅ Video subido a YouTube correctamente', 'success');
+                    $('btnUploadYouTube').disabled = false;
+                } catch (err) {
+                    statusEl.textContent = '❌ Error: ' + err.message;
+                    toast('Error subiendo a YouTube: ' + err.message, 'error');
+                    $('btnUploadYouTube').disabled = false;
+                }
+            }
+
+            function init() {
+                loadState();
+                // Establecer bases para escala si no existen
+                state.cardBaseWidth = state.cardBaseWidth || state.cardWidthPx;
+                state.cardBaseHeight = state.cardBaseHeight || state.cardHeightPx;
+                syncUIFromState();
+                updateTTSEngineVisibility();
+                setTimeout(checkOllamaConnection, 500);
+                if (state.ytToken) {
+                    $('ytDot').className = 'status-dot green';
+                    $('ytStatusText').textContent = 'Conectado';
+                    $('btnUploadYouTube').disabled = false;
+                }
+                setInterval(saveState, 5000);
+                bgVideoEl.addEventListener('error', () => toast('Error al cargar el video de fondo', 'error'));
+            }
+            init();
+        })();
+    </script>
+</body>
+</html>
