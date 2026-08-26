@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storyforge — Generador de vídeos Reddit</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TOPBAR ============ -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" width="26" height="26">
+        <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M16 9 L16 16 L21 19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span>Storyforge</span>
+    </div>
+
+    <nav class="topbar-tabs" role="tablist">
+      <button class="ttab is-active" data-panel="panel-editor" role="tab" aria-selected="true">Editor</button>
+      <button class="ttab" data-panel="panel-ia" role="tab" aria-selected="false">Guion con IA</button>
+      <button class="ttab" data-panel="panel-auto" role="tab" aria-selected="false">Modo automático</button>
+      <button class="ttab" data-panel="panel-plantillas" role="tab" aria-selected="false">Plantillas</button>
+    </nav>
+
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" id="btn-reset" title="Borrar todo y empezar de cero">Vaciar todo</button>
+      <button class="btn btn-primary" id="btn-export">
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a2 2 0 002 2h8a2 2 0 002-2v-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Exportar vídeo
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN LAYOUT ============ -->
+  <div class="workspace">
+
+    <!-- ======================================================= -->
+    <!-- PANEL IZQUIERDO: EDITOR MANUAL                          -->
+    <!-- ======================================================= -->
+    <section class="panel panel-controls" id="panel-editor" data-panel-view>
+
+      <!-- --- FONDO --- -->
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">01</span>
+          <span class="acc-title">Vídeo de fondo</span>
+        </summary>
+        <div class="acc-body">
+          <label class="field-drop" id="drop-bg">
+            <input type="file" id="input-bg-video" accept="video/*" hidden>
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M12 16V4m0 0L7 9m5-5l5 5M5 20h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="bg-drop-label">Arrastra un vídeo o haz clic para subirlo</span>
+            <span class="field-hint">Se reproduce en bucle detrás de la tarjeta</span>
+          </label>
+          <div class="row-split">
+            <label class="field-check">
+              <input type="checkbox" id="chk-bg-mute" checked>
+              <span>Silenciar audio original del vídeo</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>Ajuste del encuadre</label>
+            <select id="sel-bg-fit">
+              <option value="cover" selected>Rellenar (recorta bordes)</option>
+              <option value="contain">Ajustar (bordes negros)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Oscurecer fondo <span class="field-value" id="val-bg-dim">35%</span></label>
+            <input type="range" id="range-bg-dim" min="0" max="80" value="35">
+          </div>
+        </div>
+      </details>
+
+      <!-- --- TARJETA REDDIT --- -->
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">02</span>
+          <span class="acc-title">Tarjeta de Reddit</span>
+        </summary>
+        <div class="acc-body">
+
+          <div class="field">
+            <label>Foto de perfil</label>
+            <div class="avatar-row">
+              <div class="avatar-preview" id="avatar-preview"></div>
+              <label class="btn btn-secondary btn-sm">
+                Subir imagen
+                <input type="file" id="input-avatar" accept="image/*" hidden>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Nombre de usuario</label>
+            <input type="text" id="txt-username" value="u/historia_anonima" maxlength="40">
+          </div>
+
+          <div class="row-split">
+            <div class="field">
+              <label>Subreddit</label>
+              <input type="text" id="txt-subreddit" value="r/AmITheAsshole" maxlength="40">
+            </div>
+            <div class="field">
+              <label>Tiempo publicado</label>
+              <input type="text" id="txt-time" value="hace 8 h" maxlength="20">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Título de la historia <span class="field-value" id="val-title-count">0 car.</span></label>
+            <textarea id="txt-title" rows="4" maxlength="300" placeholder="Escribe aquí el título largo que se verá en la tarjeta...">AITA por decirle a mi hermana que su boda "sorpresa" en mi cumpleaños no era ninguna sorpresa agradable</textarea>
+          </div>
+
+          <div class="row-split-3">
+            <div class="field">
+              <label>Votos</label>
+              <input type="text" id="txt-votes" value="12,4 k">
+            </div>
+            <div class="field">
+              <label>Comentarios</label>
+              <input type="text" id="txt-comments" value="1,2 k">
+            </div>
+            <div class="field">
+              <label>% votos arriba</label>
+              <input type="text" id="txt-percent" value="94%">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Ancho de la tarjeta <span class="field-value" id="val-card-width">88%</span></label>
+            <input type="range" id="range-card-width" min="50" max="98" value="88">
+          </div>
+
+          <div class="field">
+            <label>Posición vertical <span class="field-value" id="val-card-offset">Centro</span></label>
+            <input type="range" id="range-card-offset" min="-50" max="50" value="0">
+          </div>
+
+          <div class="field">
+            <label>Tema de la tarjeta</label>
+            <select id="sel-card-theme">
+              <option value="dark" selected>Oscuro (estilo app Reddit)</option>
+              <option value="light">Claro</option>
+            </select>
+          </div>
+
+        </div>
+      </details>
+
+      <!-- --- NARRACIÓN --- -->
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">03</span>
+          <span class="acc-title">Narración por voz</span>
+        </summary>
+        <div class="acc-body">
+
+          <div class="field">
+            <label>Historia completa (solo se escucha, no aparece en pantalla)</label>
+            <textarea id="txt-story" rows="8" placeholder="Pega o escribe aquí toda la historia que se narrará por voz..."></textarea>
+            <span class="field-hint" id="story-word-count">0 palabras · ≈ 0:00 estimado</span>
+          </div>
+
+          <div class="field">
+            <label>Motor de voz</label>
+            <select id="sel-voice-engine">
+              <option value="browser" selected>Voz del navegador (gratis)</option>
+              <option value="elevenlabs">ElevenLabs (API key propia, más realista)</option>
+            </select>
+          </div>
+
+          <!-- Sub-bloque: navegador -->
+          <div id="voice-block-browser" class="voice-block">
+            <div class="field">
+              <label>Voz</label>
+              <select id="sel-browser-voice"></select>
+            </div>
+            <div class="row-split">
+              <div class="field">
+                <label>Velocidad <span class="field-value" id="val-voice-rate">1.0×</span></label>
+                <input type="range" id="range-voice-rate" min="0.6" max="1.6" step="0.05" value="1.0">
+              </div>
+              <div class="field">
+                <label>Tono <span class="field-value" id="val-voice-pitch">1.0</span></label>
+                <input type="range" id="range-voice-pitch" min="0.5" max="1.8" step="0.05" value="1.0">
+              </div>
+            </div>
+            <details class="mini-help">
+              <summary>Voz del navegador: cómo conseguir que se grabe de verdad</summary>
+              <p>Esta voz sale por el <strong>audio del sistema / de la ventana de Chrome</strong>, no por el audio de la pestaña — así que al pulsar "Generar audio", en el diálogo que te muestre el navegador tienes que elegir <strong>"Ventana"</strong> → esta ventana de Chrome (no "Pestaña") y marcar la casilla <strong>"Compartir audio"</strong>. Con pestaña, el sonido de esta voz no llega a capturarse; silenciar solo la pestaña de Storyforge tampoco la calla, porque no vive ahí.</p>
+              <p>Si eliges pestaña por error, o cancelas el diálogo, el vídeo se genera igualmente con la duración correcta pero en silencio, y te avisamos para que lo repitas bien.</p>
+              <p>Si prefieres no depender de este diálogo cada vez, usa <strong>ElevenLabs</strong> arriba: genera un archivo de audio real sin necesidad de compartir pantalla.</p>
+            </details>
+          </div>
+
+          <!-- Sub-bloque: elevenlabs -->
+          <div id="voice-block-eleven" class="voice-block" hidden>
+            <div class="field">
+              <label>API key de ElevenLabs</label>
+              <input type="password" id="txt-eleven-key" placeholder="sk_...">
+              <span class="field-hint">Se guarda solo en tu navegador (localStorage), nunca sale de tu equipo salvo hacia la API de ElevenLabs.</span>
+            </div>
+            <div class="field">
+              <label>Voice ID</label>
+              <input type="text" id="txt-eleven-voiceid" placeholder="ej. 21m00Tcm4TlvDq8ikWAM">
+              <button class="btn btn-secondary btn-sm" id="btn-eleven-list" type="button">Cargar mis voces</button>
+              <select id="sel-eleven-voice" hidden></select>
+            </div>
+            <div class="row-split">
+              <div class="field">
+                <label>Estabilidad <span class="field-value" id="val-eleven-stability">0.5</span></label>
+                <input type="range" id="range-eleven-stability" min="0" max="1" step="0.05" value="0.5">
+              </div>
+              <div class="field">
+                <label>Similitud <span class="field-value" id="val-eleven-similarity">0.75</span></label>
+                <input type="range" id="range-eleven-similarity" min="0" max="1" step="0.05" value="0.75">
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-preview-voice" type="button">▶ Escuchar voz de prueba</button>
+            <button class="btn btn-secondary" id="btn-generate-audio" type="button">Generar audio de la narración</button>
+          </div>
+          <div class="audio-status" id="audio-status">Sin audio generado todavía.</div>
+          <audio id="player-narration" controls hidden style="width:100%;margin-top:8px;"></audio>
+
+        </div>
+      </details>
+
+      <!-- --- SUBTÍTULOS OPCIONALES --- -->
+      <details class="accordion">
+        <summary>
+          <span class="acc-num">04</span>
+          <span class="acc-title">Opciones avanzadas</span>
+        </summary>
+        <div class="acc-body">
+          <div class="field">
+            <label>Formato de salida</label>
+            <select id="sel-aspect">
+              <option value="9:16" selected>9:16 vertical (Shorts / Reels / TikTok)</option>
+              <option value="1:1">1:1 cuadrado</option>
+              <option value="16:9">16:9 horizontal</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Calidad de exportación</label>
+            <select id="sel-export-quality">
+              <option value="full" selected>Completa (1080p) — más nítido, exige más del equipo</option>
+              <option value="reduced">Reducida (720p) — más fluido si el vídeo va a trompicones</option>
+            </select>
+            <span class="field-hint">Si al exportar el vídeo se ve entrecortado, prueba con calidad reducida: baja la carga de renderizado en tiempo real y suele arreglarlo.</span>
+          </div>
+          <div class="field">
+            <label>Segundos de espera al inicio (antes de que empiece la voz)</label>
+            <input type="number" id="num-lead-in" value="0" min="0" max="10" step="0.5">
+          </div>
+          <div class="field">
+            <label>Segundos extra al final tras acabar la voz</label>
+            <input type="number" id="num-lead-out" value="1" min="0" max="10" step="0.5">
+          </div>
+          <label class="field-check">
+            <input type="checkbox" id="chk-fade-audio" checked>
+            <span>Fundido de salida del audio de fondo al terminar</span>
+          </label>
+        </div>
+      </details>
+
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- PANEL IA                                                 -->
+    <!-- ======================================================= -->
+    <section class="panel panel-controls" id="panel-ia" data-panel-view hidden>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">01</span>
+          <span class="acc-title">Conexión con Ollama</span>
+        </summary>
+        <div class="acc-body">
+          <div class="field">
+            <label>URL del servidor Ollama</label>
+            <input type="text" id="txt-ollama-url" value="http://localhost:11434">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-ollama-connect" type="button">Conectar y listar modelos</button>
+          </div>
+          <div class="conn-status" id="ollama-status">
+            <span class="dot dot-off"></span> No conectado
+          </div>
+          <details class="mini-help">
+            <summary>Ollama no conecta, ¿qué hago?</summary>
+            <p>Por defecto Ollama solo acepta peticiones desde <code>localhost</code>, y esta web corre en el navegador con otro origen, así que la petición se bloquea (CORS). Arranca Ollama así:</p>
+            <p><strong>Windows (PowerShell):</strong><br><code>setx OLLAMA_ORIGINS "*"</code> y reinicia Ollama.</p>
+            <p><strong>Mac / Linux:</strong><br><code>OLLAMA_ORIGINS=* ollama serve</code></p>
+            <p>Si sigue sin ir, prueba también <code>OLLAMA_HOST=0.0.0.0</code>.</p>
+          </details>
+          <div class="field">
+            <label>Modelo</label>
+            <select id="sel-ollama-model" disabled>
+              <option>Conecta primero</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">02</span>
+          <span class="acc-title">Instrucciones para la IA</span>
+        </summary>
+        <div class="acc-body">
+          <div class="field">
+            <label>Tema / idea general de la historia</label>
+            <textarea id="txt-ia-tema" rows="3" placeholder="Ej: una historia de venganza en el trabajo, tono dramático, final satisfactorio para el protagonista..."></textarea>
+          </div>
+          <div class="row-split">
+            <div class="field">
+              <label>Estilo del subreddit</label>
+              <select id="sel-ia-subreddit-style">
+                <option value="AmITheAsshole">AITA (dilema moral, pide opinión)</option>
+                <option value="relationship_advice">Relationship Advice (drama de pareja)</option>
+                <option value="revenge">ProRevenge / PettyRevenge</option>
+                <option value="tifu">TIFU (cagada propia, tono cómico)</option>
+                <option value="confession">Confession (confesión seria)</option>
+                <option value="custom">Que lo decida la IA según el tema</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tono</label>
+              <select id="sel-ia-tono">
+                <option value="dramatico">Dramático</option>
+                <option value="comico">Cómico</option>
+                <option value="tenso">Tenso / suspense</option>
+                <option value="emotivo">Emotivo</option>
+                <option value="custom">Que lo decida la IA según el tema</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Longitud de la historia <span class="field-value" id="val-ia-words">450 palabras</span></label>
+            <input type="range" id="range-ia-words" min="100" max="1200" step="25" value="450">
+            <span class="field-hint" id="ia-words-estimate">≈ 3 min de narración a velocidad normal</span>
+          </div>
+          <label class="field-check">
+            <input type="checkbox" id="chk-ia-primera-persona" checked>
+            <span>Narrar en primera persona</span>
+          </label>
+          <label class="field-check">
+            <input type="checkbox" id="chk-ia-giro" checked>
+            <span>Incluir un giro o remate al final</span>
+          </label>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">03</span>
+          <span class="acc-title">Generar</span>
+        </summary>
+        <div class="acc-body">
+          <div class="btn-row">
+            <button class="btn btn-primary btn-block" id="btn-ia-generate-all" type="button">✨ Generar título + subreddit + historia</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" id="btn-ia-generate-title" type="button">Solo título</button>
+            <button class="btn btn-secondary btn-sm" id="btn-ia-generate-story" type="button">Solo historia</button>
+          </div>
+          <div class="ia-progress" id="ia-progress" hidden>
+            <div class="ia-progress-bar"><div class="ia-progress-fill" id="ia-progress-fill"></div></div>
+            <span id="ia-progress-label">Generando...</span>
+          </div>
+        </div>
+      </details>
+
+    </section>
+
+    <!-- Pestaña interna dentro del panel IA para ver texto crudo -->
+    <section class="panel panel-controls" id="panel-ia-output" data-panel-view hidden>
+      <div class="ia-output-header">
+        <h3>Salida de la IA</h3>
+        <span class="field-hint">Editable — se aplica en vivo a la tarjeta y a la narración</span>
+      </div>
+      <div class="field">
+        <label>Subreddit generado</label>
+        <input type="text" id="txt-ia-out-subreddit" placeholder="Aparecerá aquí tras generar...">
+      </div>
+      <div class="field">
+        <label>Título generado</label>
+        <textarea id="txt-ia-out-title" rows="4" placeholder="Aparecerá aquí tras generar..."></textarea>
+      </div>
+      <div class="field">
+        <label>Historia generada</label>
+        <textarea id="txt-ia-out-story" rows="14" placeholder="Aparecerá aquí tras generar..."></textarea>
+        <span class="field-hint" id="ia-out-word-count">0 palabras</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-ia-apply" type="button">Aplicar todo a la tarjeta y la narración</button>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- PANEL MODO AUTOMÁTICO                                    -->
+    <!-- ======================================================= -->
+    <section class="panel panel-controls" id="panel-auto" data-panel-view hidden>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">01</span>
+          <span class="acc-title">Qué hace cada vuelta</span>
+        </summary>
+        <div class="acc-body">
+          <p class="field-hint">Cada vuelta repite lo mismo: pide a la IA subreddit + título + historia, lo aplica a la tarjeta, genera el audio, renderiza el vídeo, y lo deja listo para descargar. Usa siempre el vídeo de fondo que tengas cargado ahora mismo y los ajustes de "Guion con IA" tal como estén configurados (tema, tono, longitud, etc).</p>
+          <p class="field-hint">Renderizar vídeo consume bastante CPU, y hacerlo varias veces seguidas sin descanso puede notarse en equipos más justos de recursos — si ves que el ordenador se ralentiza o algún vídeo tarda mucho más de lo normal, prueba a poner algo de tiempo entre generaciones en vez de 0.</p>
+          <div class="auto-requirement" id="auto-req-ollama">
+            <span class="dot dot-off"></span> Ollama conectado con un modelo elegido
+          </div>
+          <div class="auto-requirement" id="auto-req-bg">
+            <span class="dot dot-off"></span> Vídeo de fondo cargado
+          </div>
+          <details class="mini-help">
+            <summary>¿Y la subida a YouTube en el modo automático?</summary>
+            <p>Subir a YouTube necesita que inicies sesión en un diálogo real de Google — ningún navegador permite completar eso sin que una persona haga clic delante de la pantalla, así que <strong>no se puede automatizar del todo</strong>.</p>
+            <p>Si activas "Subir a YouTube tras cada render" abajo y ya tienes la cuenta conectada, cada vídeo generado se subirá automáticamente sin pedirte nada más — pero la primera conexión de la cuenta la tienes que hacer tú a mano antes de arrancar el lote, desde el botón "Conectar cuenta" del editor.</p>
+            <p>Si prefieres no conectar nada, deja esa opción desmarcada: los vídeos se generan y quedan listados abajo, listos para que subas los que quieras cuando quieras.</p>
+          </details>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">02</span>
+          <span class="acc-title">Configuración del lote</span>
+        </summary>
+        <div class="acc-body">
+          <div class="field">
+            <label>Número de vídeos a generar <span class="field-value" id="val-auto-count">3</span></label>
+            <input type="range" id="range-auto-count" min="1" max="50" value="3">
+          </div>
+          <div class="field">
+            <label>Tiempo entre generaciones <span class="field-value" id="val-auto-interval">0 min</span></label>
+            <input type="range" id="range-auto-interval" min="0" max="60" step="1" value="0">
+            <span class="field-hint">De 0 (sin espera, la siguiente arranca en cuanto termina la anterior) a 60 minutos.</span>
+          </div>
+          <label class="field-check">
+            <input type="checkbox" id="chk-auto-upload-yt">
+            <span>Subir a YouTube automáticamente tras cada render (necesita la cuenta ya conectada)</span>
+          </label>
+          <label class="field-check">
+            <input type="checkbox" id="chk-auto-vary-subreddit" checked>
+            <span>Dejar que la IA elija subreddit y tono libremente en cada vuelta (recomendado para variedad)</span>
+          </label>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">03</span>
+          <span class="acc-title">Ejecutar</span>
+        </summary>
+        <div class="acc-body">
+          <div class="btn-row">
+            <button class="btn btn-primary btn-block" id="btn-auto-start" type="button">▶ Iniciar lote automático</button>
+            <button class="btn btn-secondary btn-block" id="btn-auto-stop" type="button" hidden>⏹ Detener tras esta vuelta</button>
+          </div>
+          <div class="auto-progress" id="auto-progress" hidden>
+            <div class="ia-progress-bar"><div class="ia-progress-fill" id="auto-progress-fill"></div></div>
+            <span id="auto-progress-label">Vídeo 1 de 3 · Generando historia...</span>
+          </div>
+          <div class="auto-countdown" id="auto-countdown" hidden>
+            Siguiente vídeo en <span id="auto-countdown-time">--:--</span>
+            <button class="btn btn-ghost btn-sm" id="btn-auto-skip-wait" type="button">Saltar espera</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">04</span>
+          <span class="acc-title">Resultado del lote</span>
+        </summary>
+        <div class="acc-body">
+          <div id="auto-log" class="auto-log">
+            <p class="field-hint">Todavía no se ha ejecutado ningún lote.</p>
+          </div>
+        </div>
+      </details>
+
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- PANEL PLANTILLAS                                         -->
+    <!-- ======================================================= -->
+    <section class="panel panel-controls" id="panel-plantillas" data-panel-view hidden>
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">01</span>
+          <span class="acc-title">Guardar plantilla actual</span>
+        </summary>
+        <div class="acc-body">
+          <div class="field">
+            <label>Nombre de la plantilla</label>
+            <input type="text" id="txt-template-name" placeholder="Ej: Estilo AITA nocturno">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-template-save" type="button">Guardar como plantilla</button>
+          </div>
+          <span class="field-hint">Guarda todos los textos, colores, ajustes de voz y de vídeo. El vídeo de fondo en sí no se guarda (pesa demasiado), solo el resto.</span>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">02</span>
+          <span class="acc-title">Mis plantillas</span>
+        </summary>
+        <div class="acc-body">
+          <div id="template-list" class="template-list">
+            <p class="field-hint">Todavía no has guardado ninguna plantilla.</p>
+          </div>
+        </div>
+      </details>
+
+      <details class="accordion" open>
+        <summary>
+          <span class="acc-num">03</span>
+          <span class="acc-title">Importar / exportar</span>
+        </summary>
+        <div class="acc-body">
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-export-settings" type="button">Exportar ajustes actuales (.json)</button>
+            <label class="btn btn-secondary">
+              Importar ajustes (.json)
+              <input type="file" id="input-import-settings" accept="application/json" hidden>
+            </label>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-export-templates" type="button">Exportar todas las plantillas (.json)</button>
+            <label class="btn btn-secondary">
+              Importar plantillas (.json)
+              <input type="file" id="input-import-templates" accept="application/json" hidden>
+            </label>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- PREVIEW (siempre visible, columna derecha)               -->
+    <!-- ======================================================= -->
+    <section class="panel panel-preview">
+
+      <div class="preview-toolbar">
+        <span class="preview-duration" id="preview-duration">Duración estimada: 0:00</span>
+        <button class="btn btn-ghost btn-sm" id="btn-toggle-safe" type="button">Ver zonas seguras UI</button>
+      </div>
+
+      <div class="preview-stage">
+        <div class="canvas-frame" id="canvas-frame" data-aspect="9:16">
+
+          <video id="preview-bg-video" muted loop playsinline></video>
+          <div class="canvas-dim" id="canvas-dim"></div>
+
+          <div class="safe-zones" id="safe-zones" hidden>
+            <div class="safe-zone safe-top"></div>
+            <div class="safe-zone safe-bottom"></div>
+          </div>
+
+          <div class="reddit-card" id="reddit-card">
+            <div class="rc-head">
+              <div class="rc-avatar" id="rc-avatar"></div>
+              <div class="rc-head-text">
+                <div class="rc-sub-row">
+                  <span class="rc-subreddit" id="rc-subreddit">r/AmITheAsshole</span>
+                  <span class="rc-dot">•</span>
+                  <span class="rc-time" id="rc-time">hace 8 h</span>
+                </div>
+                <div class="rc-username" id="rc-username">u/historia_anonima</div>
+              </div>
+              <svg class="rc-dots" viewBox="0 0 20 4" width="16"><circle cx="2" cy="2" r="2" fill="currentColor"/><circle cx="10" cy="2" r="2" fill="currentColor"/><circle cx="18" cy="2" r="2" fill="currentColor"/></svg>
+            </div>
+            <div class="rc-title" id="rc-title">AITA por decirle a mi hermana que su boda "sorpresa" en mi cumpleaños no era ninguna sorpresa agradable</div>
+            <div class="rc-foot">
+              <div class="rc-votes">
+                <svg viewBox="0 0 20 20" width="15" fill="none"><path d="M10 4l6 8H4l6-8z" fill="currentColor"/></svg>
+                <span id="rc-votes-num">12,4 k</span>
+                <span class="rc-percent" id="rc-percent">· 94%</span>
+              </div>
+              <div class="rc-comments">
+                <svg viewBox="0 0 20 20" width="15" fill="none"><path d="M3 4h14v9H7l-4 4V4z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+                <span id="rc-comments-num">1,2 k</span>
+              </div>
+              <div class="rc-share">
+                <svg viewBox="0 0 20 20" width="15" fill="none"><path d="M14 6l3-3 3 3M17 3v10M6 9a4 4 0 100 8 4 4 0 000-8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Compartir
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="preview-transport">
+        <button class="btn btn-icon" id="btn-play-preview" title="Reproducir previsualización">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16"><path d="M6 4l10 6-10 6V4z"/></svg>
+        </button>
+        <div class="transport-time" id="transport-time">0:00 / 0:00</div>
+        <div class="transport-bar" id="transport-bar"><div class="transport-fill" id="transport-fill"></div></div>
+      </div>
+
+      <div class="youtube-block">
+        <div class="yt-info">
+          <svg viewBox="0 0 24 24" width="18" fill="currentColor"><path d="M23 12s0-3.6-.46-5.3a2.9 2.9 0 00-2-2C18.9 4.2 12 4.2 12 4.2s-6.9 0-8.54.5a2.9 2.9 0 00-2 2C1 8.4 1 12 1 12s0 3.6.46 5.3a2.9 2.9 0 002 2c1.64.5 8.54.5 8.54.5s6.9 0 8.54-.5a2.9 2.9 0 002-2C23 15.6 23 12 23 12z"/><path d="M9.8 15.5V8.5L15.8 12z" fill="#0f0f10"/></svg>
+          <span id="yt-conn-label">YouTube no conectado</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-yt-connect" type="button">Conectar cuenta</button>
+        <button class="btn btn-primary btn-sm" id="btn-yt-upload" type="button" disabled>Subir a YouTube</button>
+      </div>
+
+    </section>
+
+  </div>
+</div>
+
+<!-- ============ MODAL: EXPORTAR ============ -->
+<div class="modal-backdrop" id="modal-export" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Exportar vídeo</h3>
+      <button class="modal-close" id="modal-export-close">✕</button>
+    </div>
+    <div class="modal-body" id="modal-export-body">
+      <p class="field-hint">Se renderizará el vídeo completo con el fondo, la tarjeta y la voz. Esto se hace en tu navegador, así que puede tardar según la duración.</p>
+      <div class="export-progress" hidden id="export-progress-wrap">
+        <div class="ia-progress-bar"><div class="ia-progress-fill" id="export-progress-fill"></div></div>
+        <span id="export-progress-label">Preparando...</span>
+      </div>
+      <div class="export-result" id="export-result" hidden>
+        <p><strong>Duración final del vídeo: <span id="export-final-duration">0:00</span></strong></p>
+        <video id="export-preview-video" controls style="width:100%;border-radius:10px;margin-top:8px;"></video>
+        <div class="btn-row" style="margin-top:12px;">
+          <a class="btn btn-primary" id="btn-download-video" download="storyforge-video.webm">Descargar vídeo</a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" id="btn-export-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="btn-export-start">Empezar renderizado</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: YOUTUBE SETUP ============ -->
+<div class="modal-backdrop" id="modal-youtube" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Conectar YouTube</h3>
+      <button class="modal-close" id="modal-youtube-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Para subir directamente a YouTube desde esta app necesitas tu propio proyecto de <strong>Google Cloud</strong> con la API de YouTube activada. Es gratis y tarda unos 10 minutos:</p>
+      <ol class="steps-list">
+        <li>Entra en <code>console.cloud.google.com</code> y crea un proyecto nuevo.</li>
+        <li>En "APIs y servicios" → "Biblioteca", busca <strong>YouTube Data API v3</strong> y actívala.</li>
+        <li>En "Credenciales" → "Crear credenciales" → <strong>ID de cliente de OAuth</strong>, tipo "Aplicación web".</li>
+        <li>En "Orígenes autorizados de JavaScript" añade la URL desde la que abras esta app (ej. <code>http://localhost:5500</code>).</li>
+        <li>Copia el <strong>Client ID</strong> que te da y pégalo abajo.</li>
+      </ol>
+      <div class="field">
+        <label>Client ID de Google</label>
+        <input type="text" id="txt-yt-clientid" placeholder="123456789-abc...apps.googleusercontent.com">
+      </div>
+      <div class="field">
+        <label>Título del vídeo en YouTube</label>
+        <input type="text" id="txt-yt-title" placeholder="Se rellena con el título de la historia">
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <textarea id="txt-yt-desc" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label>Visibilidad</label>
+        <select id="sel-yt-privacy">
+          <option value="private">Privado</option>
+          <option value="unlisted" selected>Oculto (con enlace)</option>
+          <option value="public">Público</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" id="btn-yt-save-setup">Guardar Client ID</button>
+      <button class="btn btn-primary" id="btn-yt-do-upload">Iniciar sesión y subir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toast-stack"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/reddit-card.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/ollama.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/export.js"></script>
+<script src="js/youtube.js"></script>
+<script src="js/automation.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
